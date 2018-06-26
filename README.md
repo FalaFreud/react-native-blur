@@ -37,9 +37,8 @@
 
 ## Usage
 ```javascript
-import Blur from 'react-native-blur';
+import {captureScreen, removeBlurView} from 'react-native-blur';
 
 // TODO: What to do with the module?
 Blur;
 ```
-  
