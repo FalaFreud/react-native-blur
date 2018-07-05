@@ -135,3 +135,9 @@ export function removeBlurView(): Promise<string> {
         return BlurManagerModule.removeBlurView();
     }
 }
+
+export function hideContentWhenApplicationInactive(enable : boolean) {
+    if (Platform.OS === "ios") {
+        BlurManagerModule.hideContentWhenApplicationInactive(enable);
+    }
+}

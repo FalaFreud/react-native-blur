@@ -20,6 +20,7 @@ RCT_EXPORT_MODULE()
 
 @synthesize bridge = _bridge;
 UIVisualEffectView *effectView;
+NSString * const SHOW_BLUR_WHEN_APPLICATION_INACTIVE = @"hideContentWhenApplicationInactive";
 
 - (dispatch_queue_t)methodQueue
 {
@@ -97,6 +98,13 @@ RCT_EXPORT_METHOD(removeBlurView:(RCTPromiseResolveBlock)resolve
         }
         resolve(@(1));
     });
+}
+
+RCT_EXPORT_METHOD(hideContentWhenApplicationInactive:(BOOL)enable)
+{
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    [defaults setBool:enable forKey: SHOW_BLUR_WHEN_APPLICATION_INACTIVE];
+    [defaults synchronize];
 }
 
 @end
