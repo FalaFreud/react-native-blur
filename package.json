@@ -1,6 +1,6 @@
 {
   "name": "react-native-blur",
-  "version": "1.1.0",
+  "version": "2.1.0",
   "description": "Native helpers for blur view",
   "main": "index.js",
   "scripts": {
