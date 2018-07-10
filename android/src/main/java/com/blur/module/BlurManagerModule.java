@@ -5,8 +5,10 @@ import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.util.DisplayMetrics;
+import android.util.Log;
 
 import com.facebook.react.bridge.GuardedAsyncTask;
+import com.facebook.react.bridge.LifecycleEventListener;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContext;
@@ -21,16 +23,24 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
 
-public class BlurManagerModule extends ReactContextBaseJavaModule
+public class BlurManagerModule extends ReactContextBaseJavaModule implements LifecycleEventListener
 {
+    // ATRIBUTES ===================================================================================
 
     private final ReactApplicationContext reactContext;
+    public static final String TAG = "BlurManager";
+
+    // CONSTRUCTOR =================================================================================
 
     public BlurManagerModule(ReactApplicationContext reactContext)
     {
         super(reactContext);
         this.reactContext = reactContext;
     }
+
+    // METHODS =====================================================================================
+
+
 
     @Override
     public String getName()
@@ -112,6 +122,24 @@ public class BlurManagerModule extends ReactContextBaseJavaModule
 
     private static final String TEMP_FILE_PREFIX = "ReactNative-snapshot-image";
 
+    @Override
+    public void onHostResume()
+    {
+        Log.d(TAG, "onHostResume: ");
+    }
+
+    @Override
+    public void onHostPause()
+    {
+        Log.d(TAG, "onHostPause: ");
+    }
+
+    @Override
+    public void onHostDestroy()
+    {
+        Log.d(TAG, "onHostDestroy: ");
+    }
+
     /**
      * Asynchronous task that cleans up cache dirs (internal and, if available, external) of cropped
      * image files. This is run when the catalyst instance is being destroyed (i.e. app is shutting
@@ -190,4 +218,8 @@ public class BlurManagerModule extends ReactContextBaseJavaModule
         File tmpFile = File.createTempFile(TEMP_FILE_PREFIX, suffix, cacheDir);
         return tmpFile;
     }
+
+    // SEND EVENT ==================================================================================
+
+    // CLASS =======================================================================================
 }

@@ -84,20 +84,17 @@ export function captureRef(
     view: number | ReactElement<*>,
     optionsObject?: Object
 ): Promise<string> {
+
     if (typeof view !== "number") {
         const node = findNodeHandle(view);
-        if (!node)
-            return Promise.reject(
-                new Error("findNodeHandle failed to resolve view=" + String(view))
-            );
+        if (!node) {
+            return Promise.reject(new Error("findNodeHandle failed to resolve view=" + String(view)));
+        }
         view = node;
     }
     const {options, errors} = validateOptions(optionsObject);
     if (__DEV__ && errors.length > 0) {
-        console.warn(
-            "react-native-view-shot: bad options:\n" +
-            errors.map(e => `- ${e}`).join("\n")
-        );
+        console.warn("react-native-blur: bad options:\n" + errors.map(e => `- ${e}`).join("\n"));
     }
     return BlurManagerModule.captureRef(view, options);
 }
@@ -122,10 +119,7 @@ export function captureScreen(
 
     const {options, errors} = validateOptions(optionsObject);
     if (__DEV__ && errors.length > 0) {
-        console.warn(
-            "react-native-view-shot: bad options:\n" +
-            errors.map(e => `- ${e}`).join("\n")
-        );
+        console.warn("react-native-blur: bad options:\n" + errors.map(e => `- ${e}`).join("\n"));
     }
     return BlurManagerModule.captureScreen(options);
 }

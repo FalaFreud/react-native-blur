@@ -22,20 +22,20 @@ RCT_EXPORT_MODULE()
 UIVisualEffectView *effectView;
 NSString * const SHOW_BLUR_WHEN_APPLICATION_INACTIVE = @"hideContentWhenApplicationInactive";
 
-- (dispatch_queue_t)methodQueue
-{
+- (dispatch_queue_t)methodQueue {
+
     return RCTGetUIManagerQueue();
 }
 
 RCT_EXPORT_METHOD(captureScreen: (NSDictionary *)options
                   resolve:(RCTPromiseResolveBlock)resolve
-                  reject:(RCTPromiseRejectBlock)reject)
-{
+                  reject:(RCTPromiseRejectBlock)reject) {
+
     [self captureRef: [NSNumber numberWithInt:-1] withOptions:options resolve:resolve reject:reject];
 }
 
-RCT_EXPORT_METHOD(releaseCapture:(nonnull NSString *)uri)
-{
+RCT_EXPORT_METHOD(releaseCapture:(nonnull NSString *)uri) {
+
     NSString *directory = [NSTemporaryDirectory() stringByAppendingPathComponent:@"ReactNative"];
     // Ensure it's a valid file in the tmp directory
     if ([uri hasPrefix:directory] && ![uri isEqualToString:directory]) {
@@ -49,33 +49,29 @@ RCT_EXPORT_METHOD(releaseCapture:(nonnull NSString *)uri)
 RCT_EXPORT_METHOD(captureRef:(nonnull NSNumber *)target
                   withOptions:(NSDictionary *)options
                   resolve:(RCTPromiseResolveBlock)resolve
-                  reject:(RCTPromiseRejectBlock)reject)
-{
+                  reject:(RCTPromiseRejectBlock)reject) {
+
     [self.bridge.uiManager addUIBlock:^(__unused RCTUIManager *uiManager, NSDictionary<NSNumber *, UIView *> *viewRegistry) {
-        // Get view
+
         UIView *view;
 
         if ([target intValue] == -1) {
             UIWindow *window = [[UIApplication sharedApplication] keyWindow];
+            window.backgroundColor = [UIColor whiteColor];
             view = window.rootViewController.view;
         } else {
             view = viewRegistry[target];
         }
-
         if (!view) {
             reject(RCTErrorUnspecified, [NSString stringWithFormat:@"No view found with reactTag: %@", target], nil);
             return;
         }
+
         if (!UIAccessibilityIsReduceTransparencyEnabled()) {
-            view.backgroundColor = [UIColor clearColor];
 
+            view.backgroundColor = [UIColor whiteColor];
             UIBlurEffect *blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleLight];
-//            UIVibrancyEffect * effect = [UIVibrancyEffect effectForBlurEffect: blurEffect];
-
-//            UIVisualEffectView * effectView = [[UIVisualEffectView alloc] initWithEffect: effect];
             effectView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
-
-            //always fill the view
             effectView.frame = view.bounds;
             effectView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 
@@ -89,22 +85,37 @@ RCT_EXPORT_METHOD(captureRef:(nonnull NSNumber *)target
     }];
 }
 
-RCT_EXPORT_METHOD(removeBlurView:(RCTPromiseResolveBlock)resolve
-                  reject:(RCTPromiseRejectBlock)reject)
-{
+RCT_EXPORT_METHOD(removeBlurView:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject) {
+
     dispatch_async(dispatch_get_main_queue(), ^{
-        if (effectView != nil) {
-            [effectView removeFromSuperview];
+        UIWindow *window = [[UIApplication sharedApplication] keyWindow];
+        UIVisualEffectView *effectView = [window.rootViewController.view viewWithTag:0001];
+        if (effectView) {
+            if ([self isToHideContentWhenApplicationInactive]) {
+                [window.rootViewController.view bringSubviewToFront: effectView];
+            }
+            [UIView animateWithDuration:0.2 animations:^{
+                effectView.alpha = 0;
+                } completion:^(BOOL finished) {
+                    [window.rootViewController.view sendSubviewToBack: effectView];
+            }];
         }
         resolve(@(1));
     });
 }
 
-RCT_EXPORT_METHOD(hideContentWhenApplicationInactive:(BOOL)enable)
-{
+RCT_EXPORT_METHOD(hideContentWhenApplicationInactive:(BOOL)enable) {
+
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     [defaults setBool:enable forKey: SHOW_BLUR_WHEN_APPLICATION_INACTIVE];
     [defaults synchronize];
+}
+
+- (BOOL) isToHideContentWhenApplicationInactive {
+
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    BOOL enable = [defaults boolForKey: SHOW_BLUR_WHEN_APPLICATION_INACTIVE];
+    return enable;
 }
 
 @end
