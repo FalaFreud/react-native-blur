@@ -131,7 +131,17 @@ export function removeBlurView(): Promise<string> {
 }
 
 export function hideContentWhenApplicationInactive(enable : boolean) {
-    if (Platform.OS === "ios") {
-        BlurManagerModule.hideContentWhenApplicationInactive(enable);
+    BlurManagerModule.hideContentWhenApplicationInactive(enable);
+}
+
+export function getBlurredImage(): Promise<string> {
+
+    if (Platform.OS === "android") {
+        let blurredImage = BlurManagerModule.getBlurredImage();
+        if (blurredImage !== null || blurredImage !== "") {
+            return blurredImage;
+        } else {
+            return "";
+        }
     }
 }

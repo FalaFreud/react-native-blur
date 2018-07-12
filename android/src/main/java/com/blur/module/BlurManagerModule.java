@@ -1,9 +1,11 @@
 package com.blur.module;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.preference.PreferenceManager;
 import android.util.DisplayMetrics;
 import android.util.Log;
 
@@ -29,6 +31,8 @@ public class BlurManagerModule extends ReactContextBaseJavaModule implements Lif
 
     private final ReactApplicationContext reactContext;
     public static final String TAG = "BlurManager";
+    private static final String HIDE_CONTENT_WHEN_APPLICATION_INACTIVE = "HIDE_CONTENT";
+    private static final String BLURRED_IMAGE = "BLURRED_IMAGE";
 
     // CONSTRUCTOR =================================================================================
 
@@ -39,8 +43,6 @@ public class BlurManagerModule extends ReactContextBaseJavaModule implements Lif
     }
 
     // METHODS =====================================================================================
-
-
 
     @Override
     public String getName()
@@ -65,78 +67,77 @@ public class BlurManagerModule extends ReactContextBaseJavaModule implements Lif
     public void releaseCapture(String uri)
     {
         final String path = Uri.parse(uri).getPath();
-        if (path == null)
-        {
+        if (path == null) {
             return;
         }
         File file = new File(path);
-        if (!file.exists())
-        {
+        if (!file.exists()) {
             return;
         }
         File parent = file.getParentFile();
-        if (parent.equals(reactContext.getExternalCacheDir()) || parent.equals(reactContext.getCacheDir()))
-        {
+        if (parent.equals(reactContext.getExternalCacheDir()) || parent.equals(reactContext.getCacheDir())) {
             file.delete();
         }
     }
 
     @ReactMethod
-    public void captureRef(int tag, ReadableMap options, Promise promise)
-    {
-        ReactApplicationContext context = getReactApplicationContext();
-        String format = options.getString("format");
-        Bitmap.CompressFormat compressFormat =
-                format.equals("jpg")
-                        ? Bitmap.CompressFormat.JPEG
-                        : format.equals("webm")
-                        ? Bitmap.CompressFormat.WEBP
-                        : Bitmap.CompressFormat.PNG;
-        double quality = options.getDouble("quality");
-        DisplayMetrics displayMetrics = context.getResources().getDisplayMetrics();
-        Integer width = options.hasKey("width") ? (int) (displayMetrics.density * options.getDouble("width")) : null;
-        Integer height = options.hasKey("height") ? (int) (displayMetrics.density * options.getDouble("height")) : null;
-        String result = options.getString("result");
-        Boolean snapshotContentContainer = options.getBoolean("snapshotContentContainer");
-        try
-        {
-            File file = null;
-            if ("tmpfile".equals(result))
-            {
-                file = createTempFile(getReactApplicationContext(), format);
-            }
-            UIManagerModule uiManager = this.reactContext.getNativeModule(UIManagerModule.class);
-            uiManager.addUIBlock(new ViewShot(tag, format, compressFormat, quality, width, height, file, result, snapshotContentContainer, reactContext, getCurrentActivity(), promise));
-        }
-        catch (Exception e)
-        {
-            promise.reject(ViewShot.ERROR_UNABLE_TO_SNAPSHOT, "Failed to snapshot view tag " + tag);
-        }
+    public void hideContentWhenApplicationInactive(Boolean enable) {
+
+        Log.d("TouchIDManagerModule", "BlurManagerModule hideContentWhenApplicationInactive: " + enable);
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getReactApplicationContext().getBaseContext());
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putBoolean(HIDE_CONTENT_WHEN_APPLICATION_INACTIVE, enable);
+        editor.apply();
+    }
+
+    @ReactMethod
+    public void getBlurredImage(Promise promise) {
+
+        Log.d("TouchIDManagerModule", "BlurManagerModule getBlurredImage");
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getReactApplicationContext().getBaseContext());
+        promise.resolve(preferences.getString(BLURRED_IMAGE, ""));
     }
 
     @ReactMethod
     public void captureScreen(ReadableMap options, Promise promise)
     {
-        captureRef(-1, options, promise);
+        ReactApplicationContext context = getReactApplicationContext();
+        String format = options.getString("format");
+        Bitmap.CompressFormat compressFormat = format.equals("jpg") ? Bitmap.CompressFormat.JPEG : format.equals("webm") ? Bitmap.CompressFormat.WEBP : Bitmap.CompressFormat.PNG;
+
+        double quality = options.getDouble("quality");
+        DisplayMetrics displayMetrics = context.getResources().getDisplayMetrics();
+        Integer width = options.hasKey("width") ? (int) (displayMetrics.density * options.getDouble("width")) : null;
+        Integer height = options.hasKey("height") ? (int) (displayMetrics.density * options.getDouble("height")) : null;
+        Boolean snapshotContentContainer = options.getBoolean("snapshotContentContainer");
+
+        try {
+            File file = createTempFile(getReactApplicationContext(), format);
+            UIManagerModule uiManager = this.reactContext.getNativeModule(UIManagerModule.class);
+            uiManager.addUIBlock(new ViewShot(format, compressFormat, quality, width, height, file, snapshotContentContainer, reactContext, getCurrentActivity(), promise));
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(ViewShot.ERROR_UNABLE_TO_SNAPSHOT, "Failed to snapshot view");
+        }
     }
 
     private static final String TEMP_FILE_PREFIX = "ReactNative-snapshot-image";
 
     @Override
-    public void onHostResume()
-    {
+    public void onHostResume() {
+
         Log.d(TAG, "onHostResume: ");
     }
 
     @Override
-    public void onHostPause()
-    {
+    public void onHostPause() {
+
         Log.d(TAG, "onHostPause: ");
     }
 
     @Override
-    public void onHostDestroy()
-    {
+    public void onHostDestroy() {
+
         Log.d(TAG, "onHostDestroy: ");
     }
 
@@ -149,38 +150,32 @@ public class BlurManagerModule extends ReactContextBaseJavaModule implements Lif
     {
         private final Context mContext;
 
-        private CleanTask(ReactContext context)
-        {
+        private CleanTask(ReactContext context) {
             super(context);
             mContext = context;
         }
 
         @Override
-        protected void doInBackgroundGuarded(Void... params)
-        {
+        protected void doInBackgroundGuarded(Void... params) {
+
             cleanDirectory(mContext.getCacheDir());
             File externalCacheDir = mContext.getExternalCacheDir();
-            if (externalCacheDir != null)
-            {
+            if (externalCacheDir != null) {
                 cleanDirectory(externalCacheDir);
             }
         }
 
-        private void cleanDirectory(File directory)
-        {
+        private void cleanDirectory(File directory) {
+
             File[] toDelete = directory.listFiles(
-                    new FilenameFilter()
-                    {
-                        @Override
-                        public boolean accept(File dir, String filename)
-                        {
-                            return filename.startsWith(TEMP_FILE_PREFIX);
-                        }
-                    });
-            if (toDelete != null)
-            {
-                for (File file : toDelete)
-                {
+                new FilenameFilter() {
+                    @Override
+                    public boolean accept(File dir, String filename) {
+                        return filename.startsWith(TEMP_FILE_PREFIX);
+                    }
+                });
+            if (toDelete != null) {
+                for (File file : toDelete) {
                     file.delete();
                 }
             }
@@ -191,28 +186,20 @@ public class BlurManagerModule extends ReactContextBaseJavaModule implements Lif
      * Create a temporary file in the cache directory on either internal or external storage,
      * whichever is available and has more free space.
      */
-    private File createTempFile(Context context, String ext)
-            throws IOException
-    {
+    private File createTempFile(Context context, String ext) throws IOException {
+
         File externalCacheDir = context.getExternalCacheDir();
         File internalCacheDir = context.getCacheDir();
         File cacheDir;
-        if (externalCacheDir == null && internalCacheDir == null)
-        {
+        if (externalCacheDir == null && internalCacheDir == null) {
             throw new IOException("No cache directory available");
         }
-        if (externalCacheDir == null)
-        {
+        if (externalCacheDir == null) {
             cacheDir = internalCacheDir;
-        }
-        else if (internalCacheDir == null)
-        {
+        } else if (internalCacheDir == null) {
             cacheDir = externalCacheDir;
-        }
-        else
-        {
-            cacheDir = externalCacheDir.getFreeSpace() > internalCacheDir.getFreeSpace() ?
-                    externalCacheDir : internalCacheDir;
+        } else {
+            cacheDir = externalCacheDir.getFreeSpace() > internalCacheDir.getFreeSpace() ? externalCacheDir : internalCacheDir;
         }
         String suffix = "." + ext;
         File tmpFile = File.createTempFile(TEMP_FILE_PREFIX, suffix, cacheDir);
