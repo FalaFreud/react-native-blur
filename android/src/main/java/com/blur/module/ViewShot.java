@@ -37,6 +37,7 @@ public class ViewShot implements UIBlock
 {
 
     static final String ERROR_UNABLE_TO_SNAPSHOT = "E_UNABLE_TO_SNAPSHOT";
+    static final String TAG = "TouchIDManagerModule";
 
     private String extension;
     private Bitmap.CompressFormat format;
@@ -78,12 +79,12 @@ public class ViewShot implements UIBlock
     public void execute(NativeViewHierarchyManager nativeViewHierarchyManager) {
 
         OutputStream os = null;
-        View view = currentActivity.getWindow().getDecorView().findViewById(android.R.id.content);
-        if (view == null) {
-            promise.reject(ERROR_UNABLE_TO_SNAPSHOT, "No view found with reactTag");
-            return;
-        }
         try {
+            View view = currentActivity.getWindow().getDecorView().findViewById(android.R.id.content);
+            if (view == null) {
+                promise.reject(ERROR_UNABLE_TO_SNAPSHOT, "No view found with reactTag");
+                return;
+            }
             os = new FileOutputStream(output);
             captureView(view, os);
             String uri = Uri.fromFile(output).toString();
@@ -106,15 +107,21 @@ public class ViewShot implements UIBlock
     @ReactMethod
     private void storeBlurredImage(String uri) {
 
-        Log.d("TouchIDManagerModule", "BlurManagerModule storeBlurredImage: " + uri);
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this.currentActivity.getBaseContext());
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.putString(BLURRED_IMAGE, uri);
-        editor.apply();
+        Log.d(TAG, "BlurManagerModule storeBlurredImage: " + uri);
+
+        try {
+            SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this.currentActivity.getBaseContext());
+            SharedPreferences.Editor editor = sharedPreferences.edit();
+            editor.putString(BLURRED_IMAGE, uri);
+            editor.apply();
+        } catch (Exception e) {
+            e.printStackTrace();
+            Log.d(TAG, "BlurManagerModule storeBlurredImage: " + e.toString());
+        }
     }
 
     private List<View> getAllChildren(View v) {
-
+        
         if (!(v instanceof ViewGroup)) {
             ArrayList<View> viewArrayList = new ArrayList<View>();
             viewArrayList.add(v);
@@ -132,90 +139,73 @@ public class ViewShot implements UIBlock
         }
         return result;
     }
-
-    /**
-     * Screenshot a view and return the captured bitmap.
-     *
-     * @param view the view to capture
-     *
-     * @return the screenshot or null if it failed.
-     */
+    
     private void captureView(View view, OutputStream os) {
 
-        int w = view.getWidth();
-        int h = view.getHeight();
-        if (w <= 0 || h <= 0) {
-            throw new RuntimeException("Impossible to snapshot the view: view is invalid");
-        }
-
-        //evaluate real height
-        if (snapshotContentContainer)
-        {
-            h = 0;
-            ScrollView scrollView = (ScrollView) view;
-            for (int i = 0; i < scrollView.getChildCount(); i++)
-            {
-                h += scrollView.getChildAt(i).getHeight();
+        try {
+            int w = view.getWidth();
+            int h = view.getHeight();
+            if (w <= 0 || h <= 0) {
+                throw new RuntimeException("Impossible to snapshot the view: view is invalid");
             }
-        }
-        Bitmap bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-
-        Bitmap childBitmapBuffer;
-        Canvas c = new Canvas(bitmap);
-        view.draw(c);
-
-        //after view is drawn, go through children
-        List<View> childrenList = getAllChildren(view);
-
-        for (View child : childrenList)
-        {
-            if (child instanceof TextureView)
+    
+            //evaluate real height
+            if (snapshotContentContainer)
             {
-                ((TextureView) child).setOpaque(false);
-                childBitmapBuffer = ((TextureView) child).getBitmap(child.getWidth(), child.getHeight());
-
-                int left = child.getLeft();
-                int top = child.getTop();
-                View parentElem = (View) child.getParent();
-                while (parentElem != null)
+                h = 0;
+                ScrollView scrollView = (ScrollView) view;
+                for (int i = 0; i < scrollView.getChildCount(); i++)
                 {
-                    if (parentElem == view)
-                    {
-                        break;
-                    }
-                    left += parentElem.getLeft();
-                    top += parentElem.getTop();
-                    parentElem = (View) parentElem.getParent();
+                    h += scrollView.getChildAt(i).getHeight();
                 }
-                c.drawBitmap(childBitmapBuffer, left + child.getPaddingLeft(), top + child.getPaddingTop(), null);
             }
+            Bitmap bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+    
+            Bitmap childBitmapBuffer;
+            Canvas c = new Canvas(bitmap);
+            view.draw(c);
+    
+            //after view is drawn, go through children
+            List<View> childrenList = getAllChildren(view);
+    
+            for (View child : childrenList)
+            {
+                if (child instanceof TextureView)
+                {
+                    ((TextureView) child).setOpaque(false);
+                    childBitmapBuffer = ((TextureView) child).getBitmap(child.getWidth(), child.getHeight());
+    
+                    int left = child.getLeft();
+                    int top = child.getTop();
+                    View parentElem = (View) child.getParent();
+                    while (parentElem != null)
+                    {
+                        if (parentElem == view)
+                        {
+                            break;
+                        }
+                        left += parentElem.getLeft();
+                        top += parentElem.getTop();
+                        parentElem = (View) parentElem.getParent();
+                    }
+                    c.drawBitmap(childBitmapBuffer, left + child.getPaddingLeft(), top + child.getPaddingTop(), null);
+                }
+            }
+    
+            if (width != null && height != null && (width != w || height != h)) {
+                bitmap = Bitmap.createScaledBitmap(bitmap, width, height, true);
+            }
+            if (bitmap == null) {
+                throw new RuntimeException("Impossible to snapshot the view");
+            }
+            bitmap = BlurBuilder.blur(this.currentActivity, bitmap);
+            bitmap = BlurBuilder.blur(this.currentActivity, bitmap);
+            bitmap = BlurBuilder.blur(this.currentActivity, bitmap);
+            // bitmap = makeTransparent(bitmap, 200);
+            bitmap.compress(format, (int) (100.0 * quality), os);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Log.d(TAG, "captureView: ");   
         }
-
-        if (width != null && height != null && (width != w || height != h)) {
-            bitmap = Bitmap.createScaledBitmap(bitmap, width, height, true);
-        }
-        if (bitmap == null) {
-            throw new RuntimeException("Impossible to snapshot the view");
-        }
-        bitmap = BlurBuilder.blur(this.currentActivity, bitmap);
-        bitmap = BlurBuilder.blur(this.currentActivity, bitmap);
-        bitmap = BlurBuilder.blur(this.currentActivity, bitmap);
-        // bitmap = makeTransparent(bitmap, 200);
-        bitmap.compress(format, (int) (100.0 * quality), os);
-    }
-
-    private Bitmap makeTransparent(Bitmap src, int value) {
-
-        int width = src.getWidth();
-        int height = src.getHeight();
-
-        Bitmap transBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(transBitmap);
-        canvas.drawARGB(0, 0, 0, 0);
-        // config paint
-        final Paint paint = new Paint();
-        paint.setAlpha(value);
-        canvas.drawBitmap(src, 0, 0, paint);
-        return transBitmap;
     }
 }
