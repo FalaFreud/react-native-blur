@@ -89,16 +89,52 @@ RCT_EXPORT_METHOD(removeBlurView:(RCTPromiseResolveBlock)resolve reject:(RCTProm
 
     dispatch_async(dispatch_get_main_queue(), ^{
         UIWindow *window = [[UIApplication sharedApplication] keyWindow];
+        if (window.windowLevel == UIWindowLevelAlert) {
+            for (UIWindow *normalWindow in [[UIApplication sharedApplication] windows]) {
+                if (normalWindow.windowLevel == UIWindowLevelNormal) {
+                    window = normalWindow;
+                    break;
+                }
+            }
+        }
         UIVisualEffectView *effectView = [window.rootViewController.view viewWithTag:0001];
         if (effectView) {
-            if ([self isToHideContentWhenApplicationInactive]) {
-                [window.rootViewController.view bringSubviewToFront: effectView];
-            }
+//            if ([self isToHideContentWhenApplicationInactive]) {
+//                [window.rootViewController.view bringSubviewToFront: effectView];
+//            }
             [UIView animateWithDuration:0.2 animations:^{
                 effectView.alpha = 0;
                 } completion:^(BOOL finished) {
                     [window.rootViewController.view sendSubviewToBack: effectView];
             }];
+        }
+        resolve(@(1));
+    });
+}
+
+RCT_EXPORT_METHOD(showBlurView:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject) {
+    NSLog(@"Library : showBlurView");
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NSLog(@"showBlurView: 0");
+        UIWindow *window = [[UIApplication sharedApplication] keyWindow];
+        if (window.windowLevel == UIWindowLevelAlert) {
+            for (UIWindow *normalWindow in [[UIApplication sharedApplication] windows]) {
+                if (normalWindow.windowLevel == UIWindowLevelNormal) {
+                    window = normalWindow;
+                    break;
+                }
+            }
+        }
+        UIVisualEffectView *effectView = [window.rootViewController.view viewWithTag:0001];
+        if (effectView) {
+            NSLog(@"showBlurView: 1");
+            if ([self isToHideContentWhenApplicationInactive]) {
+                NSLog(@"showBlurView: 2");
+                [window.rootViewController.view bringSubviewToFront: effectView];
+                effectView.alpha = 1;
+            }
+        }else{
+            NSLog(@"showBlurView: EffectView nil");
         }
         resolve(@(1));
     });
