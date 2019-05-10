@@ -12,9 +12,13 @@
     "blurview",
     "blurscreen"
   ],
-  "author": "",
-  "license": "",
+  "author": "FalaFreud",
+  "license": "MIT",
   "peerDependencies": {
     "react-native": "^0.51.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FalaFreud/react-native-blur"
   }
 }
